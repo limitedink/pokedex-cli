@@ -6,6 +6,8 @@ import(
 	"os"
 )
 
+var exitFunc := os.Exit()
+
 type cliCommand struct {
 	name        string
 	description string
@@ -13,12 +15,13 @@ type cliCommand struct {
 }
 
 func commandExit() error {
-	fmt.Println("Closing the Pokédex... Goodbye!")
-	os.Exit(0)
+	fmt.Println("Closing the Pokedex... Goodbye!")
+	exitFunc(0)
+	return nil
 }
 
 func commandHelp() error{
-	fmt.Println("Welcome to the Pokédex!")
+	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	for _, cmd := range(registry){
 		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
@@ -27,16 +30,22 @@ func commandHelp() error{
 	
 }
 
-var registry = map[string]cliCommand{
-    "exit": {
-        name:"exit",
-        description:"Exit the Pokedex",
-        callback:commandExit,
-    },
+
+
+var registry = map[string]cliCommand{}
+
+func init() {
+	registry = map[string]cliCommand{
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
 		"help": {
-				name:"help",
-				description:"Prints a help message describing how to use the REPL",
-				callback:commandHelp,
+			name:        "help",
+			description: "Prints a help message describing how to use the REPL",
+			callback:    commandHelp,
+		},
 	}
 }
 
