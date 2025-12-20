@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+	"pokedexcli/internal/pokecache"
 )
 
 var exitFunc = os.Exit
@@ -21,6 +23,7 @@ type cliCommand struct {
 type config struct {
 	NextURL *string
 	PrevURL *string
+	Cache *pokecache.Cache
 }
 
 type locationAreaList struct {
@@ -52,21 +55,31 @@ func commandHelp(cfg *config) error {
 func commandMap(cfg *config) error {
 	url := "https://pokeapi.co/api/v2/location-area"
 	if cfg.NextURL != nil {
-		url = *cfg.NextURL
-	}
-	res, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
+        url = *cfg.NextURL
+  }
+	fmt.Println("commandMap URL:", url)
+	var bodyBytes []byte
 
-	bodyBytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
+	if data, ok := cfg.Cache.Get(url); ok {
+	bodyBytes = data
+  } else {
+			fmt.Println("making HTTP request")
+			res, err := http.Get(url)
+			if err != nil {
+					return err
+			}
+			defer res.Body.Close()
 
+			b, err := io.ReadAll(res.Body)
+			if err != nil {
+					return err
+			}
+			bodyBytes = b
+			
+			cfg.Cache.Add(url, bodyBytes)
+  }	
 	var locList locationAreaList
-	err = json.Unmarshal(bodyBytes, &locList)
+	err := json.Unmarshal(bodyBytes, &locList)
 	if err != nil {
 		return err
 	}
@@ -74,7 +87,6 @@ func commandMap(cfg *config) error {
 	for _, item := range locList.Results {
 		fmt.Println(item.Name)
 	}
-
 	cfg.NextURL = locList.Next
 	cfg.PrevURL = locList.Previous
 
@@ -84,25 +96,37 @@ func commandMap(cfg *config) error {
 func commandMapb(cfg *config) error {
 	url := "https://pokeapi.co/api/v2/location-area"
 	if cfg.PrevURL == nil {
-		fmt.Println("you're on the first page")
-		return nil
-	}
-	if cfg.PrevURL != nil {
-		url = *cfg.PrevURL
-	}
-	res, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
+        fmt.Println("you're on the first page")
+        return nil
+    }
+  url = *cfg.PrevURL
+	if url == "https://pokeapi.co/api/v2/location-area?offset=0&limit=20" {
+        url = "https://pokeapi.co/api/v2/location-area"
+  }
 
-	bodyBytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
+	var bodyBytes []byte
 
+	if data, ok := cfg.Cache.Get(url); ok {
+	bodyBytes = data
+  } else {
+			fmt.Println("making HTTP req")
+			res, err := http.Get(url)
+			if err != nil {
+					return err
+			}
+			defer res.Body.Close()
+
+			b, err := io.ReadAll(res.Body)
+			if err != nil {
+					return err
+			}
+			bodyBytes = b
+
+			cfg.Cache.Add(url, bodyBytes)
+  }	
+	
 	var locList locationAreaList
-	err = json.Unmarshal(bodyBytes, &locList)
+	err := json.Unmarshal(bodyBytes, &locList)
 	if err != nil {
 		return err
 	}
@@ -110,8 +134,7 @@ func commandMapb(cfg *config) error {
 	for _, item := range locList.Results {
 		fmt.Println(item.Name)
 	}
-
-	cfg.NextURL = locList.Next
+  cfg.NextURL = locList.Next
 	cfg.PrevURL = locList.Previous
 
 	return nil
@@ -150,7 +173,9 @@ func cleanInput(text string) []string {
 }
 
 func startRepl() {
-	cfg := &config{}
+	cfg := &config{
+		Cache: pokecache.NewCache(30 * time.Second),
+	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("Pokédex > ")
