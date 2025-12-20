@@ -53,7 +53,8 @@ func TestCommandHelp(t *testing.T) {
 	os.Stdout = w
 
 	// Run the command
-	err := commandHelp()
+	cfg := &config{}
+	err := commandHelp(cfg)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -93,7 +94,8 @@ func TestCommandExit(t *testing.T) {
 		exitFunc = os.Exit
 	}()
 
-	err := commandExit()
+	cfg := &config{}
+	err := commandExit(cfg)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
