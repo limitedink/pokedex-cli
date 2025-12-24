@@ -16,7 +16,7 @@ var exitFunc = os.Exit
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, []string) error
 }
 
 type config struct {
@@ -27,13 +27,13 @@ type config struct {
 }
 
 
-func commandExit(cfg *config) error {
+func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	exitFunc(0)
 	return nil
 }
 
-func commandHelp(cfg *config) error {
+func commandHelp(cfg *config, args []string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	for _, cmd := range registry {
@@ -42,7 +42,7 @@ func commandHelp(cfg *config) error {
 	return nil
 }
 
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	var url string
 	if cfg.NextURL != nil {
 		url = *cfg.NextURL
@@ -82,7 +82,7 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapb(cfg *config) error {
+func commandMapb(cfg *config, args []string) error {
 	if cfg.PrevURL == nil {
 		fmt.Println("you're on the first page")
 		return nil
@@ -123,6 +123,46 @@ func commandMapb(cfg *config) error {
 	return nil
 }
 
+func commandExplore(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("Explore command missing location area input. eg. explore <location_area>")
+		return nil
+	}
+	areaName := args[0]
+	fmt.Printf("Exploring %s...\n", areaName)
+	fmt.Println("Found Pokemon:")
+	url := "https://pokeapi.co/api/v2/location-area/" + areaName
+	
+	
+	if cachedData, ok := cfg.Cache.Get(url); ok {
+		var pokemonList pokeapi.LocationArea
+		if err := json.Unmarshal(cachedData, &pokemonList); err != nil {
+			return err
+		}
+		for _, item := range pokemonList.PokemonEncounters {
+			fmt.Println(item.Pokemon.Name)
+		}
+		return nil
+	}
+
+	pokemonList, err := cfg.Client.GetLocationArea(areaName)
+	if err != nil {
+		return err
+	}
+
+	if cachedBytes, err := json.Marshal(pokemonList); err == nil {
+		if url == "" {
+			url = "https://pokeapi.co/api/v2/location-area/" + areaName
+		}
+		cfg.Cache.Add(url, cachedBytes)
+	}
+
+	for _, item := range pokemonList.PokemonEncounters {
+		fmt.Println(item.Pokemon.Name)
+	}
+	return nil
+}
+
 var registry = map[string]cliCommand{}
 
 func init() {
@@ -147,6 +187,11 @@ func init() {
 			description: "Like the map command but displays the previous 20 locations/previous page of locations.",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name: "explore",
+			description: "Lists all Pokemon that can be found at the target location area.",
+			callback: commandExplore,
+		},
 	}
 }
 
@@ -169,9 +214,10 @@ func startRepl() {
 			continue
 		}
 		command := words[0]
+		args := words[1:]
 		value, exists := registry[command]
 		if exists {
-			err := value.callback(cfg)
+			err := value.callback(cfg, args)
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -29,6 +29,16 @@ type LocationAreaItem struct {
 	URL  string `json:"url"`
 }
 
+type LocationArea struct {
+    Name              string `json:"name"`
+    PokemonEncounters []struct {
+        Pokemon struct {
+            Name string `json:"name"`
+            URL  string `json:"url"`
+        } `json:"pokemon"`
+    } `json:"pokemon_encounters"`
+}
+
 func (c *Client) ListLocationAreas(url string) (*LocationAreaList, error) {
 	if url == "" {
 		url = c.baseURL + "/location-area"
@@ -52,4 +62,26 @@ func (c *Client) ListLocationAreas(url string) (*LocationAreaList, error) {
 	}
 
 	return &locList, nil
+}
+
+func (c *Client) GetLocationArea(name string) (*LocationArea, error) {
+    url := c.baseURL + "/location-area/" + name
+
+    res, err := c.httpClient.Get(url)
+    if err != nil {
+        return nil, err
+    }
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+        return nil, err
+    }
+
+    var loc LocationArea
+    if err := json.Unmarshal(body, &loc); err != nil {
+        return nil, err
+    }
+
+    return &loc, nil
 }
