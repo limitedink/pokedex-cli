@@ -206,6 +206,30 @@ func commandCatch(cfg *config, args []string) error {
 	return nil
 }
 
+func commandInspect(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("Please specify a Pokemon to inspect.")
+		return nil
+	}
+	pokemon, ok := cfg.Caught[args[0]]
+	if !ok {
+		fmt.Println("you have not caught that Pokemon.")
+		return nil
+	}
+	fmt.Println("Name: ", pokemon.Name)
+	fmt.Println("Height: ", pokemon.Height)
+	fmt.Println("Weight: ", pokemon.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range pokemon.Types {
+		fmt.Printf("  - %s\n", t.Type.Name)
+	}
+	return nil
+}
+
 var registry = map[string]cliCommand{}
 
 func init() {
@@ -239,6 +263,11 @@ func init() {
 			name:        "catch",
 			description: "Attempt to catch a pokemon.",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Displays information about the target Pokemon. NOTE: Pokemon must be caught and stored within your Pokedex first.",
+			callback:    commandInspect,
 		},
 	}
 }
