@@ -230,6 +230,14 @@ func commandInspect(cfg *config, args []string) error {
 	return nil
 }
 
+func commandPokedex(cfg *config, args []string) error {
+	fmt.Println("Your Pokedex:")
+	for _, p := range cfg.Caught {
+		fmt.Printf(" - %s\n", p.Name)
+	}
+	return nil
+}
+
 var registry = map[string]cliCommand{}
 
 func init() {
@@ -268,6 +276,11 @@ func init() {
 			name:        "inspect",
 			description: "Displays information about the target Pokemon. NOTE: Pokemon must be caught and stored within your Pokedex first.",
 			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Shows you a list of all the Pokemon you have caught and stored within your Pokedex!",
+			callback:    commandPokedex,
 		},
 	}
 }
