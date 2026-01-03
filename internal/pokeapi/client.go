@@ -2,6 +2,7 @@ package pokeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -30,13 +31,18 @@ type LocationAreaItem struct {
 }
 
 type LocationArea struct {
-    Name              string `json:"name"`
-    PokemonEncounters []struct {
-        Pokemon struct {
-            Name string `json:"name"`
-            URL  string `json:"url"`
-        } `json:"pokemon"`
-    } `json:"pokemon_encounters"`
+	Name              string `json:"name"`
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+	} `json:"pokemon_encounters"`
+}
+
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
 }
 
 func (c *Client) ListLocationAreas(url string) (*LocationAreaList, error) {
@@ -65,23 +71,45 @@ func (c *Client) ListLocationAreas(url string) (*LocationAreaList, error) {
 }
 
 func (c *Client) GetLocationArea(name string) (*LocationArea, error) {
-    url := c.baseURL + "/location-area/" + name
+	url := c.baseURL + "/location-area/" + name
 
-    res, err := c.httpClient.Get(url)
-    if err != nil {
-        return nil, err
-    }
-    defer res.Body.Close()
+	res, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
 
-    body, err := io.ReadAll(res.Body)
-    if err != nil {
-        return nil, err
-    }
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
 
-    var loc LocationArea
-    if err := json.Unmarshal(body, &loc); err != nil {
-        return nil, err
-    }
+	var loc LocationArea
+	if err := json.Unmarshal(body, &loc); err != nil {
+		return nil, err
+	}
 
-    return &loc, nil
+	return &loc, nil
+}
+
+func (c *Client) GetPokemon(name string) (*Pokemon, error) {
+	url := fmt.Sprintf("%s/pokemon/%s", c.baseURL, name)
+
+	res, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var p Pokemon
+	if err := json.Unmarshal(body, &p); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }

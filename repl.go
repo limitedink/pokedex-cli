@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
+
 	"pokedexcli/internal/pokeapi"
 	"pokedexcli/internal/pokecache"
 )
@@ -24,8 +26,8 @@ type config struct {
 	PrevURL *string
 	Cache   *pokecache.Cache
 	Client  *pokeapi.Client
+	Caught  map[string]pokeapi.Pokemon
 }
-
 
 func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
@@ -132,8 +134,7 @@ func commandExplore(cfg *config, args []string) error {
 	fmt.Printf("Exploring %s...\n", areaName)
 	fmt.Println("Found Pokemon:")
 	url := "https://pokeapi.co/api/v2/location-area/" + areaName
-	
-	
+
 	if cachedData, ok := cfg.Cache.Get(url); ok {
 		var pokemonList pokeapi.LocationArea
 		if err := json.Unmarshal(cachedData, &pokemonList); err != nil {
@@ -163,6 +164,48 @@ func commandExplore(cfg *config, args []string) error {
 	return nil
 }
 
+func commandCatch(cfg *config, args []string) error {
+	if len(args) < 1 {
+		fmt.Println("Catch command missing pokemon name input. eg. catch <pokemon_name>")
+		return nil
+	}
+	pokemonName := args[0]
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	pokemon, err := cfg.Client.GetPokemon(pokemonName)
+	if err != nil {
+		fmt.Println("Can't find that Pokemon here.")
+		return nil
+	}
+	roll := rand.Float64()
+	minExp := 50.0
+	maxExp := 300.0
+	minProb := 0.2
+	maxProb := 0.9
+
+	exp := float64(pokemon.BaseExperience)
+	if exp < minExp {
+		exp = minExp
+	}
+	if exp > maxExp {
+		exp = maxExp
+	}
+
+	t := (exp - minExp) / (maxExp - minExp)
+
+	prob := maxProb*(1.0-t) + minProb*t
+
+	if roll > prob {
+		fmt.Printf("%s escaped!\n", pokemonName)
+		return nil
+	}
+
+	cfg.Caught[pokemon.Name] = *pokemon
+	fmt.Printf("%s was caught!\n", pokemonName)
+
+	return nil
+}
+
 var registry = map[string]cliCommand{}
 
 func init() {
@@ -188,9 +231,14 @@ func init() {
 			callback:    commandMapb,
 		},
 		"explore": {
-			name: "explore",
+			name:        "explore",
 			description: "Lists all Pokemon that can be found at the target location area.",
-			callback: commandExplore,
+			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a pokemon.",
+			callback:    commandCatch,
 		},
 	}
 }
@@ -204,6 +252,7 @@ func startRepl() {
 	cfg := &config{
 		Cache:  pokecache.NewCache(30 * time.Second),
 		Client: pokeapi.NewClient(),
+		Caught: make(map[string]pokeapi.Pokemon),
 	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
