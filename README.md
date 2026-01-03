@@ -13,7 +13,7 @@ Ensure you have [Go](https://go.dev/dl/) installed on your machine.
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/bootdev/pokedex-cli.git
+    git clone https://github.com/limitedink/pokedex-cli.git
     cd pokedex-cli
     ```
 
