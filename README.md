@@ -1,14 +1,30 @@
 # Pokedex CLI
 
-A command-line interface (CLI) tool that acts as a Pokedex, allowing users to explore the Pokemon world, catch Pokemon, and inspect their details using the [PokeAPI](https://pokeapi.co/).
+**High-performance Pokedex REPL built in Go, featuring a custom thread-safe caching system with asynchronous TTL eviction to optimize API latency.**
 
 ## Motivation
 
-This application provides a robust and interactive command-line interface for exploring data from the PokeAPI. It features a custom internal caching system to optimize network requests and ensure a responsive user experience. The architecture creates a clear separation of concerns between the API client, caching layer, and the REPL interface, prioritizing maintainability and extensibility. It handles complex data relationships and state management to simulate a fully functional Pokedex environment.
+This project was engineered to explore advanced Go concepts in a practical environment. The primary goal was to build a stateful CLI application that handles real-world constraints—network latency, data persistence, and concurrency.
+
+Key architectural goals included:
+*   **Separation of Concerns:** Distinct modules for API interaction (`pokeapi`), data caching (`pokecache`), and the REPL interface.
+*   **Concurrency:** Implementing a thread-safe cache using `sync.Mutex` and background goroutines for automatic data reaping.
+*   **Performance:** Minimizing expensive network calls to the PokeAPI by serving repeated requests from memory.
+
+## Technical Implementation
+
+### Custom Caching System
+To ensure the application remains responsive, I implemented a custom in-memory caching layer (`internal/pokecache`).
+*   **Thread Safety:** Utilizes `sync.Mutex` to ensure safe concurrent access to the map, preventing race conditions.
+*   **Automatic Eviction:** A background goroutine (ticker) runs periodically to "reap" or remove entries that have exceeded their time-to-live (TTL), preventing memory bloat during long sessions.
+
+### REPL Architecture
+The Read-Eval-Print Loop is designed to be extensible. It uses a registry pattern to map string commands to function callbacks, making it trivial to add new features without modifying the core input loop. Input is sanitized and tokenized to handle variable arguments robustly.
 
 ## Quick Start
 
-Ensure you have [Go](https://go.dev/dl/) installed on your machine.
+### Prerequisites
+*   **Go 1.20+**
 
 1.  **Clone the repository:**
 
@@ -34,8 +50,7 @@ Ensure you have [Go](https://go.dev/dl/) installed on your machine.
 Once the REPL is running, you can use the following commands to interact with the Pokedex:
 
 *   **`help`**: Displays a help message describing how to use the REPL.
-*   **`map`**: Displays the names of the next 20 location areas in the Pokemon world.
-*   **`mapb`**: Displays the previous 20 location areas.
+*   **`map` / `mapb`**: Navigate through location areas in paginated batches (cached for speed).
 *   **`explore <location_area>`**: Lists all Pokemon that can be found at the specified location area.
 *   **`catch <pokemon_name>`**: Attempts to catch a Pokemon. The chance of catching depends on the Pokemon's base experience.
 *   **`inspect <pokemon_name>`**: Displays detailed information (height, weight, stats, types) about a Pokemon you have caught.
@@ -74,6 +89,17 @@ Pokédex > pokedex
 Your Pokedex:
  - bibarel
 ```
+
+## Future Enhancements & Ideas
+
+The project is designed to be extensible. Here are some potential features for future development or forks:
+
+*   **Persistence:** Save the Pokedex state to disk (JSON/SQLite) to persist progress between sessions.
+*   **Battle System:** Simulate turn-based battles between your caught Pokemon and wild encounters.
+*   **RPG Elements:** Implement an XP system to level up Pokemon and an evolution mechanic based on time or battles.
+*   **Inventory System:** Add support for different Pokeball types (Great Ball, Ultra Ball) with varying catch rates.
+*   **Improved UX:** Add command history (up-arrow support) and a more immersive navigation system (e.g., "move left/right").
+*   **Testing:** Expand unit test coverage and refactor for greater testability.
 
 ## Contributing
 
